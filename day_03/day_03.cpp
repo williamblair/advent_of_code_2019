@@ -14,6 +14,7 @@
 #include <string>
 #include <cstring>
 #include <climits>
+#include <cmath>
 
 // given wire layouts
 std::array<std::vector<std::string>, 2> wire_layouts = {{
@@ -21,21 +22,22 @@ std::array<std::vector<std::string>, 2> wire_layouts = {{
     {"L1004","D252","L909","D935","R918","D981","L251","U486","R266","U613","L546","D815","L789","D692","L550","U633","R485","U955","R693","D784","R974","U529","R926","U550","L742","U88","R647","D572","R832","D345","R98","D122","R634","U943","L956","U551","R295","U122","L575","U378","R652","U97","R129","D872","R275","D492","L530","D328","R761","U738","R836","U884","R636","U776","L951","D977","R980","U526","L824","U125","R778","D818","R281","U929","R907","U234","L359","D521","R294","U137","L607","U421","L7","U582","R194","U979","L941","D999","R442","D330","L656","U410","R753","U704","R834","D61","R775","U750","R891","D989","R856","D944","R526","D44","R227","U938","R130","D280","L721","D171","R763","D677","L643","U931","L489","U250","L779","U552","R796","U220","R465","U700","L459","U766","R501","D16","R555","U257","R122","U452","L197","U905","L486","D726","L551","U487","R785","U470","L879","U149","L978","D708","R18","U211","L652","D141","L99","D190","L982","U556","R861","U745","L786","U674","R706","U986","R554","D39","R881","D626","R885","U907","R196","U532","L297","U232","L508","U283","L236","U613","L551","U647","R679","U760","L435","D475","R916","U669","R788","U922","R107","D503","R687","D282","L940","U835","L226","U421","L64","U245","R977","D958","L866","D328","R215","D532","R350","D199","R872","U373","R415","U463","L132","U225","L144","U786","R658","D535","R263","U263","R48","D420","L407","D177","L496","U521","R47","D356","L503","D557","R220","D879","L12","U853","R265","U983","L221","U235","R46","D906","L271","U448","L464","U258","R952","D976","L949","D526","L458","D753","L408","U222","R256","U885","R986","U622","R503","D5","L659","D553","R311","U783","L541","U17","R267","U767","L423","D501","R357","D160","L316","D912","R303","U648","L182","U342","L185","U743","L559","U816","R24","D203","R608","D370","R25","U883","L72","D816","L877","U990","R49","U331","L482","U37","L585","D327","R268","D106","L224","U401","L203","D734","L695","U910","L417","U105","R135","U876","L194","U723","L282","D966","R246","U447","R966","U346","L636","D9","L480","D35","R96"}
 }};
 
-enum Map_axis {
-    width,
-    height
-};
-
-// returns the largest offset from the origin (0,0) times 2,
-// so we end up with a square
-inline int get_map_size(std::vector<std::string>& map, 
-                        Map_axis map_axis)
+typedef struct {
+    int x1;
+    int y1;
+    int x2;
+    int y2;
+} Line;
+std::vector<Line> get_lines(std::vector<std::string>& wire)
 {
-    int min_pos = INT_MAX; // farthest left/down position
-    int max_pos = INT_MIN; // farthese right/up position
-    int cur_pos = 0; // current row/column of the end of the wire
-    
-    for (std::string& str : map)
+    std::vector<Line> lines;
+
+    int cur_x = 0;
+    int cur_y = 0;
+    int old_x = 0;
+    int old_y = 0;
+
+    for (std::string& str : wire)
     {
         std::stringstream ss(str);
         
@@ -47,224 +49,120 @@ inline int get_map_size(std::vector<std::string>& map,
         int distance;
         ss >> distance;
 
-        // 3. If the direction matches, move the current position indicator 
-        if (map_axis == Map_axis::width)
-        {
-            if (direction == 'L' || direction == 'l')
-            {
-                cur_pos -= distance;
-            }
-            else if (direction  == 'R' || direction == 'r')
-            {
-                cur_pos += distance;
-            }
-        }
-        else
-        {
-            if (direction == 'U' || direction == 'u')
-            {
-                cur_pos += distance;
-            }
-            else if (direction  == 'D' || direction == 'd')
-            {
-                cur_pos -= distance;
-            }
-        }
-
-        // 4. check if the current position extends past our currently
-        //    known bounds
-        if (cur_pos > max_pos)
-        {
-            max_pos = cur_pos;
-        }
-        else if(cur_pos < min_pos)
-        {
-            min_pos = cur_pos;
-        }
-    }
-
-    // we'll just double the largest one so we end up with a square
-    max_pos = (max_pos > std::abs(min_pos)) ? max_pos : std::abs(min_pos);
-    
-    return max_pos * 2;
-}
-
-inline int get_max_map_size(std::array<std::vector<std::string>,2>& map_array, 
-                            Map_axis map_axis)
-{
-    int cur_axis_size;
-    int max_axis_size = 0; // the width/height for either the first or second
-                          // wire, depending on which is larger
-    
-    for (std::vector<std::string>& cur_map : map_array)
-    {
-        cur_axis_size = get_map_size(cur_map, map_axis);
-        
-        if (cur_axis_size > max_axis_size)
-        {
-            max_axis_size = cur_axis_size;
-        }
-    }
-    return max_axis_size;
-}
-
-
-// intersections will be filled with (row,col) pairs
-inline void add_wire(std::vector<std::string>& map_commands,
-                     std::vector<std::vector<char>>& map,
-                     std::vector<std::pair<int,int>>& intersections)
-{
-    int cur_x = map[0].size()/2; // center of the map
-    int cur_y = map.size()/2;
-    
-    for (std::string& str : map_commands)
-    {
-        std::stringstream ss(str);
-        
-        // 1. Get the direction from the command
-        char direction;
-        ss >> direction;
-        
-        // 2. Get the distance from the command
-        int distance;
-        ss >> distance;
-
-        // keep track of the old position
-        int old_x = cur_x;
-        int old_y = cur_y;
+        // save previous position
+        old_x = cur_x;
+        old_y = cur_y;
 
         switch (direction)
         {
-            case 'U': cur_y -= distance; break;
-            case 'D': cur_y += distance; break;
+            case 'U': cur_y += distance; break;
+            case 'D': cur_y -= distance; break;
             case 'L': cur_x -= distance; break;
             case 'R': cur_x += distance; break;
             default:
                 std::cout << "Invalid direction: " << direction << std::endl;
-                return;
+                break;
         }
 
-        // bounds check
-        if (cur_y < 0 || cur_x < 0)
-        {
-            std::cout << "New position past origin: row,col: " << cur_y << "," 
-                      << cur_x << std::endl;
-            return;
-        }
-
-        // set the new wire vals in the map (move from old_x to cur_x),
-        // checking for intersections along the way
-        if (old_x != cur_x)
-        {
-            const int inc_val = (cur_x > old_x) ? 1 : -1;
-            for (int x = old_x; x != cur_x; x += inc_val)
-            {
-                // check for an intersection
-                if (map[cur_y][x] != '.')
-                {
-                    map[cur_y][x] = '+';
-
-                    // don't add if its the starting point
-                    if (!(cur_y == (map.size()/2) && x == map[0].size()/2))
-                    {
-                        intersections.push_back(std::pair<int,int>
-                                                         (cur_y,x));
-                    }
-                }
-                // otherwise set like normal
-                else
-                {
-                    map[cur_y][x] = '-';
-                }
-            }
-        }
-        else if (old_y != cur_y)
-        {
-            const int inc_val = (cur_y > old_y) ? 1 : -1;
-            for (int y = old_y; y != cur_y; y += inc_val)
-            {
-                // check for an intersection
-                if (map[y][cur_x] != '.')
-                {
-                    map[y][cur_x] = '+';
-
-                    // don't add if its the starting point
-                    if (!(y == (map.size()/2) && cur_x == map[0].size()/2))
-                    {
-                        intersections.push_back(std::pair<int,int>
-                                                         (y,cur_x));
-                    }
-                }
-                // otherwise set like normal
-                else
-                {
-                    map[y][cur_x] = '|';
-                }
-            }
-        }
+        // add a new line
+        lines.push_back({old_x, old_y, cur_x, cur_y});
     }
+
+    return lines;
 }
 
-inline void 
-run_problem(std::array<std::vector<std::string>,2>& input_map)
+// returns true if there was an intersection
+// https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line
+inline bool get_intersection(Line line1, Line line2, int& intersec_x, int& intersec_y)
 {
-    std::vector<std::pair<int,int>> intersections;
-    
-    // 1. calculate the size of the map
-    int map_width = 0;
-    int map_height = 0;
+#define X1 line1.x1
+#define X2 line1.x2
+#define X3 line2.x1
+#define X4 line2.x2
 
-    // 1. Get the map size
-    map_width  = get_max_map_size(input_map, Map_axis::width);
-    map_height = get_max_map_size(input_map, Map_axis::height);
+#define Y1 line1.y1
+#define Y2 line1.y2
+#define Y3 line2.y1
+#define Y4 line2.y2
 
-    // 2. Initialize the map
-    std::vector<std::vector<char>> char_map(map_height);
-    for (std::vector<char>& row : char_map)
+
+    float t = (X1-X3)*(Y3-Y4) - (Y1-Y3)*(X3-X4);
+    float u = (X1-X2)*(Y1-Y3) - (Y1-Y2)*(X1-X3);
+
+    int divisor = (X1-X2)*(Y3-Y4) - (Y1-Y2)*(X3-X4);
+
+    if (divisor == 0)
     {
-        row.assign(map_width, '.');
+        return false;
+    }
+    
+    t /= (float)divisor;
+    u /= (float)divisor;
+    u = -u;
+
+    if ((0.0F <= t && t <= 1.0F) && (0.0F <= u && u <= 1.0F))
+    {
+        intersec_x = int(float(X1) + t*float(X2-X1));
+        intersec_y = int(float(Y1) + t*float(Y2-Y1));
+
+        std::cout << "Point intersection: ("
+                  << X1 << "," << Y1 << "),(" << X2<<","<<Y2<<"), ("
+                  << X3 << "," << Y3 << "),(" << X4<<","<<Y4<<") at "
+                  << intersec_x << "," << intersec_y << ", t,u: "
+                  << t << "," << u << std::endl;
+    }
+    else
+    {
+        return false;
     }
 
-    // 3. Add the first wire to the map
-    add_wire(input_map[0], 
-             char_map, 
-             intersections);
-    
-    // 4. Add the second wire to the map, detecting intersections as we go
-    add_wire(input_map[1], 
-             char_map, 
-             intersections);
+    return true;
+}
 
-    // 6. Find the closest wire intersection to the origin point
-    int min_distance = INT_MAX;
-    for (std::pair<int,int>& point : intersections)
+inline void run_problem(std::array<std::vector<std::string>,2>& wires)
+{
+    // 1. Get lines from both wires
+    std::vector<Line> wire1_lines = get_lines(wires[0]);
+    std::vector<Line> wire2_lines = get_lines(wires[1]);
+
+    // 2. Check for intersections between the lines
+    int intersection_x = 0;
+    int intersection_y = 0;
+    std::vector<std::pair<int,int>> intersections;
+    for (Line& line1 : wire1_lines)
     {
-        // calculate manhattan distance
-        int diff_x = point.second - (char_map[0].size()/2);
-        int diff_y = point.first - (char_map.size()/2);
+        for (Line& line2 : wire2_lines)
+        {
+            if (get_intersection(line1, 
+                                 line2, 
+                                 intersection_x, 
+                                 intersection_y))
+            {
+                if (intersection_x != 0 && intersection_y != 0)
+                {
+                    intersections.push_back(std::pair<int,int>
+                                                     (intersection_x,
+                                                      intersection_y));
+                }
+            }
+        }
+    }
 
-        // subtract 2 because we don't count the current row
-        // and column in distance
-        int distance = std::abs(diff_x) + std::abs(diff_y);
+    // 3. Get pair with minimum manhattan distance
+    int min_distance = INT_MAX;
+    for (std::pair<int,int>& intersection : intersections)
+    {
+        std::cout << "Intersection x,y: " << intersection.first << ","
+                  << intersection.second << std::endl;
+        int distance = std::abs(intersection.first) + 
+                       std::abs(intersection.second);
 
-        if (distance < min_distance) {
+        if (distance < min_distance)
+        {
             min_distance = distance;
         }
     }
-
     std::cout << "Min distance: " << min_distance << std::endl;
-
-#if 0
-    std::cout << "Map:" << std::endl;
-    for (std::vector<char>& row : char_map)    
-    {
-        for (char& val : row)
-        {
-            std::cout << val;
-        }
-        std::cout << std::endl;
-    }
-#endif
 }
 
 int main(void)
@@ -286,12 +184,21 @@ int main(void)
         {"R98","U47","R26","D63","R33","U87","L62","D20","R33","U53","R51"},
         {"U98","R91","D20","R16","D67","R40","U7","R15","U6","R7"}
     }};
+
+
+    // min distance is 2
+    std::array<std::vector<std::string>,2> test_layouts_4 = {{
+        {"U1","R1"},
+        {"R2","D1","L1","U2"}
+    }};
     
+  
     run_problem(test_layouts_1);
     run_problem(test_layouts_2);
     run_problem(test_layouts_3);
+    run_problem(test_layouts_4);
     run_problem(wire_layouts);
-
+    
     return 0;
 }
 
