@@ -73,7 +73,6 @@ std::vector<Line> get_lines(std::vector<std::string>& wire, int wire_num)
         lines.push_back({old_x, old_y, cur_x, cur_y});
 
         // draw on the window
-#if 1
         int r = (wire_num) ? 0 : 255;
         int g = (wire_num) ? 255 : 0;
         int b = 255;
@@ -87,7 +86,6 @@ std::vector<Line> get_lines(std::vector<std::string>& wire, int wire_num)
                              g,
                              b);
         sdl_window.update();
-#endif
     }
 
     return lines;
@@ -160,7 +158,7 @@ inline void run_problem(std::array<std::vector<std::string>,2>& wires)
                                  intersection_x, 
                                  intersection_y))
             {
-                if (intersection_x != 0 && intersection_y != 0)
+                if (intersection_x != 0 || intersection_y != 0)
                 {
                     intersections.push_back(std::pair<int,int>
                                                      (intersection_x,
@@ -218,9 +216,6 @@ int main(void)
     {
         return -1;
     }
-
-//    sdl_window.clear();
-//    sdl_window.draw_line(20,20,100,100,255,0,255);        
     
 //    run_problem(test_layouts_1);
 //    run_problem(test_layouts_2);
