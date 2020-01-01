@@ -3,7 +3,7 @@
  *   starting point.
  *
  * compile/run with:
- *   g++ -std=c++11 day_03.cpp -o day_03
+ *   g++ -std=c++11 day_03.cpp SdlWindow.cpp -o day_03 -lSDL -lSDL_gfx
  *   ./day_03
  */
 
@@ -15,6 +15,11 @@
 #include <cstring>
 #include <climits>
 #include <cmath>
+
+#include "SdlWindow.h"
+constexpr int WINDOW_WIDTH  = 2000;
+constexpr int WINDOW_HEIGHT = 2000;
+SdlWindow sdl_window;
 
 // given wire layouts
 std::array<std::vector<std::string>, 2> wire_layouts = {{
@@ -28,7 +33,7 @@ typedef struct {
     int x2;
     int y2;
 } Line;
-std::vector<Line> get_lines(std::vector<std::string>& wire)
+std::vector<Line> get_lines(std::vector<std::string>& wire, int wire_num)
 {
     std::vector<Line> lines;
 
@@ -66,6 +71,23 @@ std::vector<Line> get_lines(std::vector<std::string>& wire)
 
         // add a new line
         lines.push_back({old_x, old_y, cur_x, cur_y});
+
+        // draw on the window
+#if 1
+        int r = (wire_num) ? 0 : 255;
+        int g = (wire_num) ? 255 : 0;
+        int b = 255;
+        int center_x = WINDOW_WIDTH / 2;
+        int center_y = WINDOW_HEIGHT / 2;
+        sdl_window.draw_line(old_x+center_x,
+                             (-old_y)+center_y,
+                             cur_x+center_x,
+                             (-cur_y)+center_y,
+                             r,
+                             g,
+                             b);
+        sdl_window.update();
+#endif
     }
 
     return lines;
@@ -122,8 +144,8 @@ inline bool get_intersection(Line line1, Line line2, int& intersec_x, int& inter
 inline void run_problem(std::array<std::vector<std::string>,2>& wires)
 {
     // 1. Get lines from both wires
-    std::vector<Line> wire1_lines = get_lines(wires[0]);
-    std::vector<Line> wire2_lines = get_lines(wires[1]);
+    std::vector<Line> wire1_lines = get_lines(wires[0], 0);
+    std::vector<Line> wire2_lines = get_lines(wires[1], 1);
 
     // 2. Check for intersections between the lines
     int intersection_x = 0;
@@ -191,13 +213,29 @@ int main(void)
         {"U1","R1"},
         {"R2","D1","L1","U2"}
     }};
+
+    if (!sdl_window.init(WINDOW_WIDTH,WINDOW_HEIGHT))
+    {
+        return -1;
+    }
+
+//    sdl_window.clear();
+//    sdl_window.draw_line(20,20,100,100,255,0,255);        
     
-  
-    run_problem(test_layouts_1);
-    run_problem(test_layouts_2);
-    run_problem(test_layouts_3);
-    run_problem(test_layouts_4);
+//    run_problem(test_layouts_1);
+//    run_problem(test_layouts_2);
+//    run_problem(test_layouts_3);
+//    run_problem(test_layouts_4);
     run_problem(wire_layouts);
+
+    bool quit = false;
+    do
+    {
+        if (!sdl_window.update())
+        {
+            quit = true;
+        }
+    } while (!quit);
     
     return 0;
 }
