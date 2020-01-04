@@ -2,7 +2,7 @@
  * Day 07 - Max thrust signal from amplifiers
  *
  * compile/run with:
- *   g++ -std=c++11 day_06.cpp -o day_07
+ *   g++ -std=c++11 day_07.cpp -o day_07
  *   ./day_07
  */
 
