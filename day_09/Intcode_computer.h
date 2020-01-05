@@ -85,6 +85,8 @@ private:
     std::vector<long int> opcode_input;
     long int opcode_index = 0;
 
+    long int relative_offset = 0; // for mode 2 params; relative address offsets
+
     std::queue<long int> input_queue; // for the input function
     std::vector<long int> output_vec; // for the output function
 
@@ -399,6 +401,49 @@ opcodes_map =
 
         opcode_index += 4;
     }},
+
+    {9, [&](std::vector<long int>& input,long int& opcode_index)
+    {
+        // opcode 9: adjust offset
+
+        if (opcode_index + 1 >= input.size())
+        {
+            std::cout << "ADJUST OFFSET ERROR: opcode index greater than "
+                      << " input size"
+                      << std::endl;
+            opcode_index = -1;
+            return;
+        }
+
+        // get parameter modes
+        std::vector<long int> param_modes = parse_opcode(input[opcode_index]);
+        if (param_modes.size() != 2) {
+            std::cout << "ADJUST OFFSET ERROR: bad opcode parse" << std::endl;
+            opcode_index = -1;
+            return;
+        }
+
+        // calculate locations
+        long int test_index_1 = input[opcode_index+1];
+        long int test_index_2 = input[opcode_index+2];
+        long int store_index = input[opcode_index+3];
+
+        // if the first parameter equals the second parameter,
+        // store 1 in the position given by the third parameter
+        if ((param_modes[1] ? test_index_1 : input[test_index_1]) == 
+            (param_modes[2] ? test_index_2 : input[test_index_2]))
+        {
+            input[store_index] = 1;
+        }
+        // otherwise store 0
+        else
+        {
+            input[store_index] = 0;
+        }
+
+        opcode_index += 2;
+    }},
+
     
     {99, [&](std::vector<long int>& input,long int& opcode_index)
     {
@@ -431,6 +476,7 @@ std::vector<long int> parse_opcode(long int opcode)
         {6,2},
         {7,3},
         {8,3},
+        {9,1},
         {99,0}
     };
 
@@ -448,6 +494,56 @@ std::vector<long int> parse_opcode(long int opcode)
     
     return parsed_values;
 }
+    
+    // returns the appropriate value based on given parameter mode
+    long int get_parametered_value(int param_mode,
+                                   int input_index, 
+                                   std::vector<long int>& input)
+    {
+        int result_val;
+        switch (param_mode)
+        {
+            case 0:
+                result_val = input[input_index];
+                break;
+            case 1:
+                result_val = input_index;
+                break;
+            case 2:
+                result_val = input[input_index+relative_offset];
+                break;
+            default:
+                std::cout << "ERROR - unhandled param mode" << std::endl;
+                result_val = -1;
+                break;
+        }
+        return result_val;
+    }
+
+    // returns the appropriate address based on parameter mode
+    long int* get_parametered_address(int param_mode,
+                                      int input_index, 
+                                      std::vector<long int>& input)
+    {
+        long int* result_addr;
+        switch (param_mode)
+        {
+            case 0:
+                result_addr = &input[input_index];
+                break;
+            case 1:
+                result_addr = &input[input_index];
+                break;
+            case 2:
+                result_addr = &input[input_index+relative_offset];
+                break;
+            default:
+                std::cout << "ERROR - unhandled param mode" << std::endl;
+                result_addr = NULL;
+                break;
+        }
+        return result_addr;
+    }
 
 }; // end Intcode_computer class
 
