@@ -13,6 +13,7 @@
 #include <climits>
 
 #include "Intcode_computer.h"
+#include "input.h"
 
 void run_program(std::vector<long int>& input)
 {
@@ -36,9 +37,10 @@ std::vector<long int> test_program_3 = {104,1125899906842624,99};
 
 int main(void)
 {
-    run_program(test_program_1);
-    run_program(test_program_2);
-    run_program(test_program_3);
+//    run_program(test_program_1);
+//    run_program(test_program_2);
+//    run_program(test_program_3);
+    run_program(problem_input);
 
     return 0;
 }
