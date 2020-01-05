@@ -273,7 +273,19 @@ inline void run_problem(std::vector<std::string>& input)
 #endif
 
     // 3. Find the location with the most visible asteroids
+    int most_visible = INT_MIN;
+    int row = 0;
+    int col = 0;
+    for (Asteroid& asteroid : asteroids)
+    {
+        if (asteroid.num_visible_asteroids > most_visible) {
+            most_visible = asteroid.num_visible_asteroids;
+            row = asteroid.row;
+            col = asteroid.col;
+        }
+    }
 
+    std::cout << "Most visible: " << most_visible << std::endl;
 }
 
 std::vector<std::string> test_input_1 = {
@@ -297,11 +309,63 @@ std::vector<std::string> test_input_2 = {
 ".#....####"
 };
 
+std::vector<std::string> test_input_3 = {
+"#.#...#.#.",
+".###....#.",
+".#....#...",
+"##.#.#.#.#",
+"....#.#.#.",
+".##..###.#",
+"..#...##..",
+"..##....##",
+"......#...",
+".####.###."
+};
+
+std::vector<std::string> test_input_4 = {
+".#..#..###",
+"####.###.#",
+"....###.#.",
+"..###.##.#",
+"##.##.#.#.",
+"....###..#",
+"..#.#..#.#",
+"#..#.#.###",
+".##...##.#",
+".....#.#.."
+};
+
+std::vector<std::string> test_input_5 = {
+".#..##.###...#######",
+"##.############..##.",
+".#.######.########.#",
+".###.#######.####.#.",
+"#####.##.#.##.###.##",
+"..#####..#.#########",
+"####################",
+"#.####....###.#.#.##",
+"##.#################",
+"#####.##.###..####..",
+"..######..##.#######",
+"####.##.####...##..#",
+".#####..#.######.###",
+"##...#.##########...",
+"#.##########.#######",
+".####.#.###.###.#.##",
+"....##.##.###..#####",
+".#.#.###########.###",
+"#.#.#.#####.####.###",
+"###.##.####.##.#..##"
+};
+
 int main(void)
 {
-//    run_problem(problem_input);
     run_problem(test_input_1);
     run_problem(test_input_2);
+    run_problem(test_input_3);
+    run_problem(test_input_4);
+    run_problem(test_input_5);
+    run_problem(problem_input);
 
     return 0;
 }
