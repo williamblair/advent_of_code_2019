@@ -126,10 +126,17 @@ opcodes_map =
 
         // calculate and store the result, checking for immediate mode or
         // position mode based on parsed parameters
+#if 0
         input[result_index] = (param_modes[1] ? input_1_index : 
                                                 input[input_1_index]) +
                               (param_modes[2] ? input_2_index : 
                                                 input[input_2_index]);
+#endif
+        *get_parametered_address(param_modes[3],
+                                 result_index,
+                                 input) =
+            get_parametered_value(param_modes[1],input_1_index,input) +
+            get_parametered_value(param_modes[2],input_2_index,input);
 
         opcode_index += 4;
     }},
@@ -163,10 +170,18 @@ opcodes_map =
         // technically should bounds check here...
 
         // calculate and store the result
+#if 0
         input[result_index] = (param_modes[1] ? input_1_index : 
                                                 input[input_1_index]) *
                               (param_modes[2] ? input_2_index : 
                                                 input[input_2_index]);
+#endif
+
+        *get_parametered_address(param_modes[3],
+                                 result_index,
+                                 input) =
+            get_parametered_value(param_modes[1],input_1_index,input) *
+            get_parametered_value(param_modes[2],input_2_index,input);
 
         opcode_index += 4;
     }},
@@ -206,7 +221,11 @@ opcodes_map =
         input_queue.pop();
 
         // write the input to given location
+#if 0
         input[result_index] = input_val;
+#endif
+        *get_parametered_address(param_modes[1],result_index,input) =
+            input_val;
 
         opcode_index += 2;
     }},
@@ -237,8 +256,13 @@ opcodes_map =
         const long int read_from_index = input[opcode_index+1];
 
         // get the value to output
+#if 0
         long int output_val = param_modes[1] ? read_from_index : 
                                           input[read_from_index];
+#endif
+        long int output_val = get_parametered_value(param_modes[1],
+                                                    read_from_index,
+                                                    input);
 
         // write the output
         output_vec.push_back(output_val);
@@ -273,12 +297,22 @@ opcodes_map =
 
         // if the first parameter is non-zero, set the instruction pointer
         // to the value of the second parameter
+#if 0
         if ((param_modes[1] ? test_index : input[test_index]) != 0)
         {
             opcode_index = param_modes[2] ? jump_index : input[jump_index];
             return;
         }
+#endif
+        if (get_parametered_value(param_modes[1],test_index,input) != 0)
+        {
+            opcode_index = get_parametered_value(param_modes[2],
+                                                 jump_index,
+                                                 input);
+            return;
+        }
 
+        // otherwise do nothing
         opcode_index += 3;
     }},
 
@@ -309,9 +343,18 @@ opcodes_map =
 
         // if the first parameter IS zero, set the instruction pointer
         // to the value of the second parameter
+#if 0
         if ((param_modes[1] ? test_index : input[test_index]) == 0)
         {
             opcode_index = param_modes[2] ? jump_index : input[jump_index];
+            return;
+        }
+#endif
+        if (get_parametered_value(param_modes[1],test_index,input) == 0)
+        {
+            opcode_index = get_parametered_value(param_modes[2],
+                                                 jump_index,
+                                                 input);
             return;
         }
 
@@ -346,6 +389,7 @@ opcodes_map =
 
         // if the first parameter is less than the second parameter,
         // store 1 in the position given by the third parameter
+#if 0
         if ((param_modes[1] ? test_index_1 : input[test_index_1]) <
             (param_modes[2] ? test_index_2 : input[test_index_2]))
         {
@@ -355,6 +399,16 @@ opcodes_map =
         else
         {
             input[store_index] = 0;
+        }
+#endif
+        if (get_parametered_value(param_modes[1],test_index_1,input) <
+            get_parametered_value(param_modes[2],test_index_2,input))
+        {
+            *get_parametered_address(param_modes[3],store_index,input) = 1;
+        }
+        else
+        {
+            *get_parametered_address(param_modes[3],store_index,input) = 0;
         }
 
         opcode_index += 4;
@@ -386,6 +440,7 @@ opcodes_map =
         long int test_index_2 = input[opcode_index+2];
         long int store_index = input[opcode_index+3];
 
+#if 0
         // if the first parameter equals the second parameter,
         // store 1 in the position given by the third parameter
         if ((param_modes[1] ? test_index_1 : input[test_index_1]) == 
@@ -397,6 +452,17 @@ opcodes_map =
         else
         {
             input[store_index] = 0;
+        }
+#endif
+
+        if (get_parametered_value(param_modes[1],test_index_1,input) ==
+            get_parametered_value(param_modes[2],test_index_2,input))
+        {
+            *get_parametered_address(param_modes[3],store_index,input) = 1;
+        }
+        else
+        {
+            *get_parametered_address(param_modes[3],store_index,input) = 0;
         }
 
         opcode_index += 4;
@@ -423,23 +489,12 @@ opcodes_map =
             return;
         }
 
-        // calculate locations
-        long int test_index_1 = input[opcode_index+1];
-        long int test_index_2 = input[opcode_index+2];
-        long int store_index = input[opcode_index+3];
+        // get indices
+        long int adjust_index = input[opcode_index+1];
 
-        // if the first parameter equals the second parameter,
-        // store 1 in the position given by the third parameter
-        if ((param_modes[1] ? test_index_1 : input[test_index_1]) == 
-            (param_modes[2] ? test_index_2 : input[test_index_2]))
-        {
-            input[store_index] = 1;
-        }
-        // otherwise store 0
-        else
-        {
-            input[store_index] = 0;
-        }
+        relative_offset += get_parametered_value(param_modes[1],
+                                                 adjust_index,
+                                                 input);
 
         opcode_index += 2;
     }},
@@ -496,11 +551,11 @@ std::vector<long int> parse_opcode(long int opcode)
 }
     
     // returns the appropriate value based on given parameter mode
-    long int get_parametered_value(int param_mode,
-                                   int input_index, 
+    long int get_parametered_value(long int param_mode,
+                                   long int input_index, 
                                    std::vector<long int>& input)
     {
-        int result_val;
+        long int result_val;
         switch (param_mode)
         {
             case 0:
@@ -521,8 +576,8 @@ std::vector<long int> parse_opcode(long int opcode)
     }
 
     // returns the appropriate address based on parameter mode
-    long int* get_parametered_address(int param_mode,
-                                      int input_index, 
+    long int* get_parametered_address(long int param_mode,
+                                      long int input_index, 
                                       std::vector<long int>& input)
     {
         long int* result_addr;
